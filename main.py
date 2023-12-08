@@ -1,36 +1,50 @@
 import os
-import time
-
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, BackgroundTasks
 from typing import List, Annotated
 import requests, json
 from dotenv import load_dotenv
+import asyncio
+
+from sms_config import API_KEY
 
 load_dotenv()
 app = FastAPI()
 
-@app.get("/send_bulk_sms/")
-async def root(data: Annotated[list, Query()] = []):
-    trimmed_data = trim_data(data)
-    for item in trimmed_data:
-        res = SendSms(item['message'],item['send_to'])
-        if res.status_code == 200:
-            update_sent_msg_status(item['id'])
-    return "Success"
+async def background_task(duration: int, data: list):
+    print(f"Background task started: {duration} seconds")
+    for item in data:
+        SendSms(item['text'],item['phone_number'],item['id'])
+        await asyncio.sleep(duration)
 
-def SendSms(message,send_to):
+    print(f"Background task completed: {duration} seconds")
+
+async def bg_tasker(background_tasks: BackgroundTasks, data: list):
+    background_tasks.add_task(background_task, 10, data)
+    return {"message": "Hello, World!"}
+
+@app.get("/send_bulk_sms/")
+async def root(data: Annotated[list, Query()] = [], background_tasks: BackgroundTasks = None):
+    trimmed_data = trim_data(data[0])
+    # Correct way to call bg_tasker and await its completion
+    response_data = await bg_tasker(background_tasks, trimmed_data)
+    return '{"success":"Background task started"}'
+
+def SendSms(message,send_to,id):
   url = "http://" + os.getenv('APP_URL') + ":" + os.getenv('APP_PORT') + "/services/api/messaging/"
   params = {
     'to': send_to,
     'message': message
   }
   res = requests.post(url, params=params)
-  return res
-
+  update_sent_msg_status("staging.ecitizenph.com/api",id)
 def trim_data(data):
-    data = data
-    return data
+    json_data = json.loads(data)
+    return json_data
 
-def update_sent_msg_status(id):
-    time.sleep(10)
-    return "Updated"
+def update_sent_msg_status(base_url,id):
+    try:
+        url = f'https://{base_url}/sms/{id}/update-sent'
+        headers = {'Authorization': API_KEY}
+        requests.put(url, headers=headers)
+    except:
+        print("Database update error.")
