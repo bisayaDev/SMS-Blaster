@@ -4,11 +4,13 @@ from typing import List, Annotated
 import requests, json
 from dotenv import load_dotenv
 import asyncio
-
+from html_design import view
 from sms_config import API_KEY
 
 load_dotenv()
 app = FastAPI()
+
+
 
 async def background_task(duration: int, data: list):
     print(f"Background task started: {duration} seconds")
@@ -29,6 +31,11 @@ async def root(data: Annotated[list, Query()] = [], background_tasks: Background
     response_data = await bg_tasker(background_tasks, trimmed_data)
     return '{"success":"Background task started"}'
 
+@app.get("/")
+async def index():
+    return view
+
+
 def SendSms(message,send_to,id):
   url = "http://" + os.getenv('APP_URL') + ":" + os.getenv('APP_PORT') + "/services/api/messaging/"
   params = {
@@ -43,8 +50,16 @@ def trim_data(data):
 
 def update_sent_msg_status(base_url,id):
     try:
-        url = f'https://{base_url}/sms/{id}/update-sent'
+        url = f'https://{base_url}/sms/{id}/update-sent/'
         headers = {'Authorization': API_KEY}
         requests.put(url, headers=headers)
     except:
         print("Database update error.")
+
+def ping_server_api():
+    ping = Ping(os.getenv('APP_URL'),os.getenv('APP_PORT'),60)
+    try:
+        pinged = ping.ping(1)
+        return True
+    except:
+        return False
