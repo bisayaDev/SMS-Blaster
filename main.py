@@ -1,7 +1,6 @@
 import os
 from starlette.responses import HTMLResponse
-from fastapi import FastAPI, Query, BackgroundTasks
-from typing import List, Annotated
+from fastapi import FastAPI, BackgroundTasks
 import requests, json
 from dotenv import load_dotenv
 import asyncio
@@ -30,7 +29,7 @@ async def bg_tasker(background_tasks: BackgroundTasks, data: list):
 async def root(base_url: str,job_id: int, background_tasks: BackgroundTasks = None):
     data = get_jobs(job_id,base_url)
     if ping_server_api():
-        # response_data = await bg_tasker(background_tasks, data)
+        response_data = await bg_tasker(background_tasks, data)
         return {"success":"Background task started."}
     else:
         return {"error":"Android SMS Gateway is offline."}
