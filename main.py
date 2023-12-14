@@ -1,11 +1,13 @@
 import os
+from starlette.responses import HTMLResponse
 from fastapi import FastAPI, Query, BackgroundTasks
 from typing import List, Annotated
 import requests, json
 from dotenv import load_dotenv
 import asyncio
-from html_design import view
+from html_design import index_view
 from sms_config import API_KEY
+from tcping import Ping
 
 load_dotenv()
 app = FastAPI()
@@ -14,6 +16,7 @@ app = FastAPI()
 
 async def background_task(duration: int, data: list):
     print(f"Background task started: {duration} seconds")
+
     for item in data:
         SendSms(item['text'],item['phone_number'],item['id'])
         await asyncio.sleep(duration)
@@ -21,19 +24,29 @@ async def background_task(duration: int, data: list):
     print(f"Background task completed: {duration} seconds")
 
 async def bg_tasker(background_tasks: BackgroundTasks, data: list):
-    background_tasks.add_task(background_task, 10, data)
-    return {"message": "Hello, World!"}
+    background_tasks.add_task(background_task, 5, data)
 
 @app.get("/send_bulk_sms/")
-async def root(data: Annotated[list, Query()] = [], background_tasks: BackgroundTasks = None):
-    trimmed_data = trim_data(data[0])
-    # Correct way to call bg_tasker and await its completion
-    response_data = await bg_tasker(background_tasks, trimmed_data)
-    return '{"success":"Background task started"}'
+async def root(base_url: str,job_id: int, background_tasks: BackgroundTasks = None):
+    data = get_jobs(job_id,base_url)
+    if ping_server_api():
+        # response_data = await bg_tasker(background_tasks, data)
+        return {"success":"Background task started."}
+    else:
+        return {"error":"Android SMS Gateway is offline."}
 
-@app.get("/")
-async def index():
-    return view
+def get_jobs(id,url):
+    location_url = f"https://{url}.ecitizenph.com/api"
+    try:
+        result = requests.get(f'{location_url}/sms/get-recipients/').json()
+    except Exception as e:
+        result = []
+        print(e)
+    return result
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return index_view()
 
 
 def SendSms(message,send_to,id):
@@ -59,7 +72,8 @@ def update_sent_msg_status(base_url,id):
 def ping_server_api():
     ping = Ping(os.getenv('APP_URL'),os.getenv('APP_PORT'),60)
     try:
-        pinged = ping.ping(1)
+        ping.ping(1)
         return True
     except:
         return False
+
