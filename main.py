@@ -100,3 +100,7 @@ def fix_cp_numbers(num):
         return num
     elif num.startswith('9') and len(num) == 10:
         return f"0{num}"
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=9090)
