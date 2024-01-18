@@ -12,7 +12,7 @@
 
 
 Next Run NGROK
-1. Open CMD
+1. Open *NEW* CMD
 2. then type: cd C:\Users\Mesasix\Pictures\Camera Roll\Ecitizen\sms-blaster-android
 3. then type: ngrok http --domain=open-joey-deadly.ngrok-free.app 9090
 
