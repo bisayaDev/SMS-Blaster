@@ -103,4 +103,4 @@ def fix_cp_numbers(num):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=9090)
+    uvicorn.run("main:app", host="0.0.0.0", port=BROADCAST_PORT)
