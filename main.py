@@ -5,7 +5,7 @@ import requests, json
 from dotenv import load_dotenv
 import asyncio
 from html_design import index_view
-from sms_config import API_KEY
+from sms_config import *
 from tcping import Ping
 
 load_dotenv()
@@ -60,7 +60,7 @@ def index():
 
 
 def SendSms(message,send_to,id,base_url):
-  url = "http://" + os.getenv('APP_URL') + ":" + os.getenv('APP_PORT') + "/services/api/messaging/"
+  url = "http://" + SMS_APP_URL + ":" + SMS_APP_PORT + "/services/api/messaging/"
   params = {
     'to': send_to,
     'message': message
@@ -84,7 +84,7 @@ def update_sent_msg_status(base_url,id):
         print(f"Database update error. id = {id}")
 
 def ping_server_api():
-    ping = Ping(os.getenv('APP_URL'),os.getenv('APP_PORT'),60)
+    ping = Ping(SMS_APP_URL,SMS_APP_PORT,30)
     try:
         ping.ping(1)
         return True
