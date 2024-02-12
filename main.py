@@ -60,7 +60,7 @@ def index():
 
 
 def SendSms(message,send_to,id,base_url):
-  url = "http://" + SMS_APP_URL + ":" + SMS_APP_PORT + "/services/api/messaging/"
+  url = f"http://{SMS_APP_URL}:{SMS_APP_PORT}/services/api/messaging/"
   params = {
     'to': send_to,
     'message': message
