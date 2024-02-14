@@ -7,6 +7,7 @@ import asyncio
 from html_design import index_view
 from sms_config import *
 from tcping import Ping
+from discord_logger import send_logs
 
 load_dotenv()
 app = FastAPI()
@@ -32,6 +33,7 @@ async def bg_tasker(background_tasks: BackgroundTasks, data: list):
 async def root(base_url: str,job_id: int, background_tasks: BackgroundTasks = None):
     data = get_jobs(job_id,base_url)
     if ping_server_api():
+        send_logs(compose_logs(base_url,data,job_id,'Ongoing...'))
         response_data = await bg_tasker(background_tasks, data)
         return {"success":"Background task started."}
     else:
@@ -100,6 +102,21 @@ def fix_cp_numbers(num):
         return num
     elif num.startswith('9') and len(num) == 10:
         return f"0{num}"
+
+def compose_logs(base_url,data,job_id,status):
+    if base_url == 'staging':
+        env = "STAGING"
+    else:
+        env = "PRODUCTION"
+
+
+    message = f"""
+Env: {env}
+Site: {base_url}
+# of Recepients: {len(data)}
+Status: {status}
+    """
+    return message
 
 if __name__ == "__main__":
     import uvicorn
