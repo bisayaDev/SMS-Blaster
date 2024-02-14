@@ -1,4 +1,4 @@
-import os
+import os, sys
 from starlette.responses import HTMLResponse
 from fastapi import FastAPI, BackgroundTasks
 import requests, json
@@ -8,6 +8,7 @@ from html_design import index_view
 from sms_config import *
 from tcping import Ping
 from discord_logger import send_logs
+from io import StringIO
 
 load_dotenv()
 app = FastAPI()
@@ -33,11 +34,12 @@ async def bg_tasker(background_tasks: BackgroundTasks, data: list):
 @app.get("/send_bulk_sms/")
 async def root(base_url: str,job_id: int, background_tasks: BackgroundTasks = None):
     data = get_jobs(job_id,base_url)
-    if ping_server_api():
+    if ping_server_api()['status'] == 'online':
         send_logs(compose_logs(base_url,data,job_id,'Ongoing...'))
         response_data = await bg_tasker(background_tasks, data)
         return {"success":"Background task started."}
     else:
+        send_logs(compose_logs(status='Failed'))
         return {"error":"Android SMS Gateway is offline."}
 
 def get_jobs(id,base_url):
@@ -88,13 +90,21 @@ def update_sent_msg_status(base_url,id):
     except:
         print(f"Database update error. id = {id}")
 
+@app.get("/status")
 def ping_server_api():
-    ping = Ping(SMS_APP_URL,SMS_APP_PORT,30)
+    old_stdout = sys.stdout
+    sys.stdout = buffer = StringIO()
+
+    ping = Ping(SMS_APP_URL,SMS_APP_PORT,5)
     try:
         ping.ping(1)
-        return True
+        sys.stdout = old_stdout
+        result = buffer.getvalue()
+        if 'time out' in str(result):
+            return {'status':'offline'}
+        return {'status':'online'}
     except:
-        return False
+        return {'status':'offline'}
 
 def fix_cp_numbers(num):
     if num.startswith('09') and len(num) == 11:
@@ -106,14 +116,45 @@ def fix_cp_numbers(num):
     elif num.startswith('9') and len(num) == 10:
         return f"0{num}"
 
-def compose_logs(base_url,data,job_id,status):
-    message = {
-            "content": "Annoucement!",
+def compose_logs(base_url="",data="",job_id="",status=""):
+    if status == 'Ongoing...':
+        color = 16245426
+        emoji = ":hourglass_flowing_sand:"
+    else:
+        color = 3793585
+        emoji = ":white_check_mark:"
+
+    if status == 'Failed':
+        message = {
+            "content": ":exclamation::exclamation::exclamation:  ALERT :exclamation::exclamation::exclamation: ",
             "embeds": [
                 {
-                    "title": f"SMS Gateway - {base_url}",
-                    "color": 16711680,
+                    "title": f"SMS Gateway - ERROR",
+                    "color": 16740615,
                     "fields": [ 
+                        {
+                            "name": "Unable to ping the Android Server: ",
+                            "value": 'Android Server is offline or not reachable. Please check the server and try again or contact the developer.',
+                            "inline": False
+                        }
+                    ]
+                }
+            ]
+        }
+        return message
+
+    message = {
+            "content": "Announcement!",
+            "embeds": [
+                {
+                    "title": f"SMS Gateway",
+                    "color": color,
+                    "fields": [ 
+                        {
+                            "name": "Environment: ",
+                            "value": base_url,
+                            "inline": False
+                        },
                         {
                             "name": "Job ID ",
                             "value": job_id,
@@ -126,7 +167,7 @@ def compose_logs(base_url,data,job_id,status):
                         },
                         {
                             "name": "Status: ",
-                            "value": status,
+                            "value": f"{emoji} {status}",
                             "inline": False
                         }
                     ]
@@ -137,4 +178,4 @@ def compose_logs(base_url,data,job_id,status):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=BROADCAST_PORT)
+    uvicorn.run("main:app", host="0.0.0.0", port=BROADCAST_PORT,reload=True)
