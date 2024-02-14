@@ -24,6 +24,7 @@ async def background_task(duration: int, data: list):
         SendSms(item['text'],num,item['id'],item['url'])
         await asyncio.sleep(duration)
 
+    send_logs(compose_logs(data[0]['base_url'],data,data[0]['job_id'],'Completed!!'))
     print(f"Background task completed: {duration * len(data)} seconds")
 
 async def bg_tasker(background_tasks: BackgroundTasks, data: list):
@@ -54,6 +55,8 @@ def get_jobs(id,base_url):
     if result:
         for i in result:
             i['url'] = url
+            i['job_id'] = id
+            i['base_url'] = base_url
     return result
 
 @app.get("/", response_class=HTMLResponse)
@@ -104,18 +107,32 @@ def fix_cp_numbers(num):
         return f"0{num}"
 
 def compose_logs(base_url,data,job_id,status):
-    if base_url == 'staging':
-        env = "STAGING"
-    else:
-        env = "PRODUCTION"
-
-
-    message = f"""
-Env: {env}
-Site: {base_url}
-# of Recepients: {len(data)}
-Status: {status}
-    """
+    message = {
+            "content": "Annoucement!",
+            "embeds": [
+                {
+                    "title": f"SMS Gateway - {base_url}",
+                    "color": 16711680,
+                    "fields": [ 
+                        {
+                            "name": "Job ID ",
+                            "value": job_id,
+                            "inline": False
+                        },
+                        {
+                            "name": "Total Recipients: ",
+                            "value": len(data),
+                            "inline": False
+                        },
+                        {
+                            "name": "Status: ",
+                            "value": status,
+                            "inline": False
+                        }
+                    ]
+                }
+            ]
+        }
     return message
 
 if __name__ == "__main__":
