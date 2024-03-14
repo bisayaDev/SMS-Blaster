@@ -9,14 +9,15 @@ from sms_config import *
 from tcping import Ping
 from discord_logger import send_logs
 from io import StringIO
-from tokenizer import get_token
 
 load_dotenv()
 app = FastAPI()
-headers = {}
+
+
 
 async def background_task(duration: int, data: list):
     print(f"Background task started: {duration} seconds interval")
+
     for item in data:
         num = fix_cp_numbers(item['phone_number'])
         if not num:
@@ -32,8 +33,6 @@ async def bg_tasker(background_tasks: BackgroundTasks, data: list):
 
 @app.get("/send_bulk_sms/")
 async def root(base_url: str,job_id: int, background_tasks: BackgroundTasks = None):
-    global headers
-    headers = get_token(base_url)
     data = get_jobs(job_id,base_url)
     if ping_server_api()['status'] == 'online':
         send_logs(compose_logs(base_url,data,job_id,'Ongoing...'))
@@ -44,14 +43,13 @@ async def root(base_url: str,job_id: int, background_tasks: BackgroundTasks = No
         return {"error":"Android SMS Gateway is offline."}
 
 def get_jobs(id,base_url):
-    global headers
     if base_url == "local":
         url = "localhost"
     else:
         url = f"https://{base_url}.ecitizenph.com"
 
     try:
-        result = requests.get(f'{url}/api/sms/get-recipients/{id}',headers=headers).json()
+        result = requests.get(f'{url}/api/sms/get-recipients/{id}').json()
     except Exception as e:
         result = []
         print(e)
@@ -69,13 +67,12 @@ def index():
 
 
 def SendSms(message,send_to,id,base_url):
-  global headers
   url = f"http://{SMS_APP_URL}:{SMS_APP_PORT}/services/api/messaging/"
   params = {
     'to': send_to,
     'message': message
   }
-  res = requests.post(url, params=params,headers=headers)
+  res = requests.post(url, params=params)
   update_sent_msg_status(base_url,id)
 
 def trim_data(data):
@@ -83,12 +80,12 @@ def trim_data(data):
     return json_data
 
 def update_sent_msg_status(base_url,id):
-    global headers
     try:
         if base_url == 'local':
             url = f'https://localhost/api/sms/{id}/update-sent/'
         else:
             url = f'{base_url}/api/sms/{id}/update-sent/'
+        headers = {'Authorization': API_KEY}
         requests.put(url, headers=headers)
     except:
         print(f"Database update error. id = {id}")
