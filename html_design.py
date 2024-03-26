@@ -1,9 +1,10 @@
 import os
-from tcping import Ping
+from ip_port_scanner import *
 from dotenv import load_dotenv
 load_dotenv()
 
 def index_view():
+    stats = ping_server_api()
     view = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -19,7 +20,9 @@ def index_view():
             <div class="col-12 text-center"><h1>eCitizenPH - Android SMS Blaster Status</h1></div>
         </div>
         <div class="row text-center">
-            <span>ANDROID GATEWAY STATUS: {ping_server_api()}</span>
+            <span>Android Server Status: <b>{stats['status']}</b></span>
+            <span>Android Server Count: <b>{stats['count']}</b></span>
+            <span>Android Servers: <b>{stats['servers']}</b></span>
         </div>
         </body>
         </html>
@@ -27,9 +30,18 @@ def index_view():
     return view
 
 def ping_server_api():
-    ping = Ping(os.getenv('APP_URL'),os.getenv('APP_PORT'),60)
-    try:
-        pinged = ping.ping(1)
-        return "✅"
-    except:
-        return "❌"
+    phones = get_all_running_device()
+
+    if phones:
+        status = "✅ ONLINE ✅"
+    else:
+        status = "❌ OFFLINE ❌"
+
+
+    response = {
+        'status': status,
+        'count' : len(phones),
+        'servers': phones
+    }
+
+    return response
