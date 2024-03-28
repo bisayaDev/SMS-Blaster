@@ -6,9 +6,7 @@ from dotenv import load_dotenv
 import asyncio
 from html_design import index_view
 from sms_config import *
-from tcping import Ping
 from discord_logger import send_logs, compose_logs
-from io import StringIO
 from tokenizer import get_token
 from ip_port_scanner import get_all_running_device
 from helper import *
